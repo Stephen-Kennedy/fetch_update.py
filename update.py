@@ -2,16 +2,15 @@
 #Auto update script for updating debian/ubuntu with Python
 import os
 
-
 def auto_update():
   #checks for available updates in repositories
   os.system('apt update ')
 
   #If upgrade is available, will prompt user to accept upgrade
-  os.system('apt upgrade ')
+  os.system('apt upgrade -y')
 
   #removes old packages that are no longer needed as dependencies
-  os.system('apt-get autoremove')
+  os.system('apt-get autoremove -y')
 
   # Clears out local repository of packages that can no longer be downloaded and are pretty much useless
   os.system('apt-get autoclean')
