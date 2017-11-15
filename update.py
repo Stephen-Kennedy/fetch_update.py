@@ -1,19 +1,21 @@
 #!/usr/bin/python
 #Auto update script for updating debian/ubuntu with Python
 import os
+import time
 
 def auto_update():
-  #checks for available updates in repositories
-  os.system('apt update ')
+  updates = ['update', 'upgrade', 'autoremove', 'autoclean']
 
-  #If upgrade is available, will prompt user to accept upgrade
-  os.system('apt upgrade -y')
+  # Checks respositories for available updates, installs upgrades, removes old packages,
+  # clears local repository of packages that are no longer useful
+  for update in updates:
+    os.system('apt -y %s' % (update))
 
-  #removes old packages that are no longer needed as dependencies
-  os.system('apt-get autoremove -y')
-
-  # Clears out local repository of packages that can no longer be downloaded and are pretty much useless
-  os.system('apt-get autoclean')
+def install_default():
+  programs = ['vim', 'dnsutils', 'ccze', 'iftop', 'htop']
+  for program in programs:
+    print("Installing %s " % program)
+    os.system('apt-get install -y %s' % (program))
 
 # Checks to see if the "reboot-required" file exists in /var/run/. If so, the kernel has changed and
 # a reboot is required.
@@ -34,4 +36,5 @@ def auto_restart():
     print("No reboot required.")
 
 auto_update()
+install_default()
 auto_restart()
