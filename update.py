@@ -4,7 +4,6 @@
 # Auto update script for updating debian/ubuntu with Python
 import os
 import time
-import apt
 
 def auto_update():
   updates = ['update', 'upgrade', 'autoremove', 'autoclean']
@@ -13,17 +12,6 @@ def auto_update():
   # clears local repository of packages that are no longer useful
   for update in updates:
     os.system('apt-get -y %s' % (update))
-
-def install_default():
-  cache = apt.Cache() # get the current installed packages from apt
-  programs = ['vim', 'dnsutils', 'ccze', 'iftop', 'htop', 'curl', 'openssh-client']
-
-  for program in programs:
-    if cache["%s" % program].is_installed:
-      print("Skipping %s, it is already installed. " % (program))
-    else:
-      print("Installing %s " % program)
-      os.system('apt-get install -y %s' % (program))
 
 # Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
@@ -43,5 +31,4 @@ def auto_restart():
     print("No reboot required.")
 
 auto_update()
-install_default()
 auto_restart()
