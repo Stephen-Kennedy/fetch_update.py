@@ -12,7 +12,7 @@ def auto_update():
   # Checks respositories for available updates, installs upgrades, removes old packages,
   # clears local repository of packages that are no longer useful
   for update in updates:
-    os.system('apt -y %s' % (update))
+    os.system('apt-get -y %s' % (update))
 
 def install_default():
   cache = apt.cache() # get the current installed packages from apt
