@@ -17,7 +17,7 @@ def auto_update():
 def auto_restart():
   reboot_exists = ""
   if os.path.isfile('/var/run/reboot-required') == True:
-    restart = raw_input("A restart is required.  Do you want to restart now? (YES/NO)  ")
+    restart = input("A restart is required.  Do you want to restart now? (YES/NO)  ")
     restart = str.strip(restart)
     if restart.lower() in ('yes', 'y'):
       print("Restarting....")
