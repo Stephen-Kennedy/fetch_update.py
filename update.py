@@ -15,7 +15,7 @@ def auto_update():
     os.system('apt-get -y %s' % (update))
 
 def install_default():
-  cache = apt.cache() # get the current installed packages from apt
+  cache = apt.Cache() # get the current installed packages from apt
   programs = ['vim', 'dnsutils', 'ccze', 'iftop', 'htop', 'curl', 'openssh-client']
 
   for program in programs:
