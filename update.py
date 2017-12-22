@@ -1,7 +1,10 @@
-#!/usr/bin/python
-#Auto update script for updating debian/ubuntu with Python
+#!/usr/bin/python3
+# Author Stephen J Kennedy
+# Version 1.0
+# Auto update script for updating debian/ubuntu with Python
 import os
 import time
+import apt
 
 def auto_update():
   updates = ['update', 'upgrade', 'autoremove', 'autoclean']
@@ -12,13 +15,17 @@ def auto_update():
     os.system('apt -y %s' % (update))
 
 def install_default():
-  programs = ['vim', 'dnsutils', 'ccze', 'iftop', 'htop']
-  for program in programs:
-    print("Installing %s " % program)
-    os.system('apt-get install -y %s' % (program))
+  cache = apt.cache() # get the current installed packages from apt
+  programs = ['vim', 'dnsutils', 'ccze', 'iftop', 'htop', 'curl', 'openssh-client']
 
-# Checks to see if the "reboot-required" file exists in /var/run/. If so, the kernel has changed and
-# a reboot is required.
+  for program in programs:
+    if cache["%s" % program].is_installed:
+      print("Skipping %s, it is already installed. " % (program))
+    else:
+      print("Installing %s " % program)
+      os.system('apt-get install -y %s' % (program))
+
+# Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
   reboot_exists = ""
   if os.path.isfile('/var/run/reboot-required') == True:
