@@ -6,12 +6,12 @@ import os
 import time
 
 def auto_update():
-  updates = ['update', 'upgrade', 'autoremove', 'autoclean']
+  updates = ['update', 'upgrade', 'remove', 'autoclean']
 
   # Checks respositories for available updates, installs upgrades, removes old packages,
   # clears local repository of packages that are no longer useful
   for update in updates:
-    os.system('apt-get -y %s' % (update))
+    os.system('apt -y %s' % (update))
 
 # Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
