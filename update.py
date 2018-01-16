@@ -31,4 +31,4 @@ def auto_restart():
     print("No reboot required.")
 
 auto_update()
-#auto_restart()
+auto_restart()
