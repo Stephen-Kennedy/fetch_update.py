@@ -4,6 +4,12 @@
 # Auto update script for updating debian/ubuntu with Python
 import os
 import time
+from logging.handlers import SysLogHandler
+import logging
+
+logger = logging.getLogger()
+logger.addHandler(SysLogHandler('/dev/log'))
+logger.addHandler(logging.FileHandler('/var/log/pyupdate.log'))
 
 def auto_update():
   updates = ['update', 'upgrade', 'remove', 'autoclean']
@@ -12,23 +18,23 @@ def auto_update():
   # clears local repository of packages that are no longer useful
   for update in updates:
     os.system('apt -y %s' % (update))
+    logger.warning('Running apt %s.' % (update))
+
+#logs all actions
+def piupdate ():
+  os.system('pihole -up')
+  logging.warning('Running pihole update.')
 
 # Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
   reboot_exists = ""
   if os.path.isfile('/var/run/reboot-required') == True:
-    restart = input("A restart is required.  Do you want to restart now? (YES/NO)  ")
-    restart = str.strip(restart)
-    if restart.lower() in ('yes', 'y'):
-      print("Restarting....")
-      os.system('shutdown -r now')
-    elif restart.lower() in ('no', 'n'):
-      print("Exiting without restart")
-    else:
-      print("Sorry, I did not understand you. Exiting...")
-      return
+     logging.warning('Reboot required. Rebooting now')
+     os.system('shutdown -r now')
+
   else:
-    print("No reboot required.")
+      logging.warning('No reboot required. Update complete.')
 
 auto_update()
+piupdate()
 auto_restart()
