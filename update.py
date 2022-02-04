@@ -20,11 +20,6 @@ def auto_update():
     os.system('apt -y %s' % (update))
     logger.warning('Running apt %s.' % (update))
 
-#logs all actions
-def piupdate ():
-  os.system('pihole -up')
-  logging.warning('Running pihole update.')
-
 # Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
   reboot_exists = ""
