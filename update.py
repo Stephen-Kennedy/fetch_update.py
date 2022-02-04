@@ -10,13 +10,13 @@ logger.addHandler(logging.FileHandler('/var/log/pyupdate.log'))
 def auto_update():
     updates = ['update', 'upgrade', 'remove', 'autoclean']
 
-  # Checks respositories for available updates, installs upgrades, removes old packages,
-  # clears local repository of packages that are no longer useful
-  for update in updates:
-    os.system('apt -y %s' % (update))
-    logger.warning('Running apt %s.' % (update))
+    # Checks respositories for available updates, installs upgrades, removes old packages,
+    # clears local repository of packages that are no longer useful
+    for update in updates:
+        os.system('apt -y %s' % (update))
+        logger.warning('Running apt %s.' % (update))
 
-#logs all actions
+# checks for update to pihole
 def piupdate ():
     os.system('pihole -up')
     logger.warning('Running pihole update.')
