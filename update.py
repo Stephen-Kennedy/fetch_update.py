@@ -31,5 +31,4 @@ def auto_restart():
       logging.warning('No reboot required. Update complete.')
 
 auto_update()
-piupdate()
 auto_restart()
