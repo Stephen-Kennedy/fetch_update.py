@@ -24,7 +24,7 @@ def piupdate ():
 # Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
     reboot_exists = ""
-    if os.system('-f /var/run/reboot-required') == True:
+    if os.path.isfile('/var/run/reboot-required') == True:
         logger.warning("*** REBOOT REQUIRED / REBOOTING NOW ***")
         os.system('shutdown -r now')
 
