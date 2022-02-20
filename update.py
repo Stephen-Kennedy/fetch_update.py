@@ -28,7 +28,7 @@ def auto_restart():
      os.system('shutdown -r now')
 
   else:
-      logging.warning('No reboot required. Update complete.')
+      logging.warning('   Update complete.')
 
 auto_update()
 auto_restart()
