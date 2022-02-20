@@ -24,7 +24,7 @@ def auto_update():
 def auto_restart():
   reboot_exists = ""
   if os.path.isfile('/var/run/reboot-required') == True:
-     logging.warning('Reboot required. Rebooting now')
+     logging.warning('***REBOOT required. Rebooting now***')
      os.system('shutdown -r now')
 
   else:
