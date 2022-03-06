@@ -27,7 +27,7 @@ def auto_restart():
     get_hostname = os.system('hostname')
     
     if os.path.isfile('/var/run/reboot-required') == True:
-        logger.warning(f"*** REBOOT REQUIRED for host: {get_hostname). Rebooting now ***")
+        logger.warning(f"*** REBOOT REQUIRED for host: {get_hostname}. Rebooting now ***")
         os.system('shutdown -r now')
 
     else:
