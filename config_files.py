@@ -15,39 +15,42 @@ logger.addHandler(logging.FileHandler('/var/log/pyupdate.log'))
 github_path = 'https://raw.githubusercontent.com/Stephen-Kennedy/fetch_update/master/'
 current_directory = os.getcwd()
 
-# get current custom file list from Github
-file_list_name = 'filelist.txt'
-os.system(f'wget {github_path}/{file_list_name}')
+def get_update_list():
+    """ Get the most current list file from the Github fetch_update master. Read the txt file
+    into a list for custom_files_to_update(). After processing custom_file_to_update() remove
+    temp_file_list"""
 
-# custom files to maintain
-get_my_file_list = open(f'{current_directory}/{file_list_name}','r')
-set_file_list = get_my_file_list.split("\n")
-get_my_file_list.close()
-                    
-def custom_files_to_update():
+    file_list_name = 'file_list.txt'
+    get_file_list = (f'{github_path}{file_list_name}')
+    os.system(f'wget {get_file_list}')
 
-                        
+    temp_file_list = (f'{current_directory}/{file_list_name}')
+    with open (f'{temp_file_list}') as file:
+        file_list = file.read().splitlines()
 
+    custom_files_to_update(file_list)
+    os.system(f'rm {temp_file_list}')
+
+def custom_files_to_update(files):
     """ Checks to see if file from custom_file exists on current system. If so, downloads
     current Github version and compares current file to newly downloaded version.  If the files
     do not match, replace existing file with new version. """
-    for file in custom_files:
-        if os.path.isfile(f'{file}'):
-            get_file_name = os.path.basename(file)
-            #  set file name from file path to facilitate download of github content
-            f1 = (f'{current_directory}/{get_file_name}')
-            f2 = (f'{file}')
-            print(f1)
-            print(f2)
 
-            os.system(f'wget {github_path}{get_file_name}')
+    for file in files:
+        get_file_name = os.path.basename(file)
+        os.system(f'wget {github_path}{get_file_name}')
+        existing_file = (f'{file}')
+        new_file = (f'{current_directory}/{get_file_name}')
 
-            if not filecmp.cmp(f1, f2):
-                os.system(f'cp {f1} {f2}')
+        if os.path.isfile(file):
+            existing_file = (f'{file}')
+
+            if not filecmp.cmp(existing_file, new_file):
+                os.system(f'cp {new_file} {existing_file}')
                 logger.warning(f'*** New file configurations on Github. ***')
-            else:
-                logger.warning(f'*** No new configurations to install from Github ***')
+        else:
+            os.system(f'cp {new_file} {file}')
 
-            os.system(f'rm {f1}')
+        os.system(f'rm {new_file}')
 
-custom_files_to_update()
+get_update_list()
