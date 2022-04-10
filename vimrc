@@ -52,3 +52,11 @@ endif
 if filereadable("/etc/vim/vimrc.local")
   source /etc/vim/vimrc.local
 endif
+
+"custom settings
+set number
+set showcmd
+set ignorecase
+set incsearch
+set autoindent
+set tabstop=4
