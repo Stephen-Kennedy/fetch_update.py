@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Author Stephen J Kennedy
-# Version 1.0
+# Version 2.0
 # Auto update script for updating debian/ubuntu with Python
 import os
 import time
