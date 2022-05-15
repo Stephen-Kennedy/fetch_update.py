@@ -2,10 +2,10 @@
 # Author Stephen J Kennedy
 # Version 1.0
 # Script to check for and update most current installs
-import os
-import socket
 import filecmp
 import logging
+import os
+import socket
 from logging.handlers import SysLogHandler
 
 logger = logging.getLogger()
@@ -14,6 +14,7 @@ logger.addHandler(logging.FileHandler('/var/log/pyupdate.log'))
 
 github_path = 'https://raw.githubusercontent.com/Stephen-Kennedy/fetch_update/master/'
 current_directory = os.getcwd()
+
 
 def get_update_list():
     """ Get the most current list file from the Github fetch_update master. Read the txt file
@@ -25,11 +26,12 @@ def get_update_list():
     os.system(f'wget {get_file_list}')
 
     temp_file_list = (f'{current_directory}/{file_list_name}')
-    with open (f'{temp_file_list}') as file:
+    with open(f'{temp_file_list}') as file:
         file_list = file.read().splitlines()
 
     custom_files_to_update(file_list)
     os.system(f'rm {temp_file_list}')
+
 
 def custom_files_to_update(files):
     """ Checks to see if file from custom_file exists on current system. If so, downloads
@@ -52,5 +54,6 @@ def custom_files_to_update(files):
             os.system(f'cp {new_file} {file}')
 
         os.system(f'rm {new_file}')
+
 
 get_update_list()

@@ -14,6 +14,7 @@ logger.addHandler(logging.FileHandler('/var/log/pyupdate.log'))
 
 host_name = socket.gethostname()
 
+
 # Checks respositories for available updates, installs upgrades, removes old packages,
 # clears local repository of packages that are no longer useful
 def auto_update():
@@ -26,10 +27,12 @@ def auto_update():
     if os.path.isfile('/usr/local/bin/pihole'):
         piupdate()
 
+
 # checks for update to pihole
-def piupdate ():
+def piupdate():
     os.system('pihole -up')
     logger.warning(f'Running pihole update on {host_name}. ')
+
 
 # Checks to see if "reboot-required" file exists in /var/run/.
 def auto_restart():
@@ -40,6 +43,7 @@ def auto_restart():
 
     else:
         logging.warning(f'**** Update complete on {host_name}.')
+
 
 auto_update()
 auto_restart()
