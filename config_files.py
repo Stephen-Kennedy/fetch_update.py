@@ -30,7 +30,7 @@ def get_update_list():
         file_list = file.read().splitlines()
 
     custom_files_to_update(file_list)
-    os.system(f'rm {temp_file_list}')
+    os.system(f'rm {temp_file_list}.*')
 
 
 def custom_files_to_update(files):
