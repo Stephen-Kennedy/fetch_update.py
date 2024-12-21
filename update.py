@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Author: Stephen J Kennedy
-# Version: 3.1
+# Version: 3.4
 # Auto update script for Debian/Ubuntu with email notifications using local Postfix.
 
 import subprocess
@@ -9,6 +9,27 @@ import logging
 from logging.handlers import RotatingFileHandler
 import smtplib
 from email.mime.text import MIMEText
+
+# Ensure pip is installed
+try:
+    subprocess.run(['pip', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+except (FileNotFoundError, subprocess.CalledProcessError):
+    print("pip not found, attempting to install pip...")
+    subprocess.run(['sudo', 'apt-get', 'update'], check=True)
+    subprocess.run(['sudo', 'apt-get', 'install', '-y', 'python3-pip'], check=True)
+
+# Check for dotenv and install if missing
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    subprocess.run(['pip', 'install', 'python-dotenv'], check=True)
+    from dotenv import load_dotenv
+
+# Load environment variables from .env file
+ENV_FILE = '/etc/postfix/env_variables.env'
+if not os.path.exists(ENV_FILE):
+    raise FileNotFoundError(f"Environment file {ENV_FILE} not found. Please create it with the required variables.")
+load_dotenv(ENV_FILE)
 
 # Configure Logging
 LOG_FILE = "/var/log/pyupdate.log"
@@ -19,7 +40,7 @@ file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5*1024*1024, backupCount=3
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-# Email Configuration
+# Email Configuration from environment variables
 FROM_EMAIL = os.getenv('FROM_EMAIL', 'default@domain.com')
 TO_EMAIL = os.getenv('TO_EMAIL', 'default@domain.com')
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'localhost')
