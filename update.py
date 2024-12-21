@@ -99,11 +99,15 @@ def auto_update():
 
     # Check if a distribution upgrade is available
     dist_upgrade_output = run_command(['sudo', 'apt-get', '-s', 'dist-upgrade'])
-    if dist_upgrade_output and "upgraded," in dist_upgrade_output:
-        send_email(
-            subject=f"Distribution Upgrade Available on {host_name}",
-            body=f"A distribution upgrade is available on {host_name}. Manual intervention is required.\n\nOutput:\n{dist_upgrade_output}"
-        )
+    if dist_upgrade_output:
+    # Look for "The following packages will be upgraded:" in the output
+        if "The following packages will be upgraded:" in dist_upgrade_output:
+            send_email(
+                subject=f"Distribution Upgrade Available on {host_name}",
+                body=f"A distribution upgrade is available on {host_name}. Manual intervention is required.\n\nOutput:\n{dist_upgrade_output}"
+            )
+    else:
+        logger.info("No distribution upgrades are available.")
 
 def auto_restart():
     """Checks if a reboot is required and performs it."""
