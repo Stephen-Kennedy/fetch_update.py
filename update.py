@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # Author: Stephen J Kennedy
-# Version: 3.7
-# Auto update script for Debian/Ubuntu with Gmail SMTP relay support.
+# Version: 3.9
+# Auto update script for Debian/Ubuntu with Gmail SMTP relay support, including Pi-hole.
 
 import os
 import subprocess
@@ -72,20 +72,31 @@ def send_email(subject, body):
     except Exception as e:
         logger.error(f"General error while sending email: {str(e)}")
 
-def run_command(command, sudo=False):
+def run_command(command, timeout=600):
     """Run shell command securely and log output."""
     try:
-        if sudo:
-            command.insert(0, 'sudo')
         env = os.environ.copy()
         env["DEBIAN_FRONTEND"] = "noninteractive"
         result = subprocess.run(
-            command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+            command, 
+            check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True, 
+            env=env,
+            stdin=subprocess.DEVNULL,  # Suppress input prompts
+            timeout=timeout  # Set timeout to prevent indefinite hangs
         )
         logger.info(f"Command executed successfully: {' '.join(command)}")
         return result.stdout.strip()
+    except subprocess.TimeoutExpired as e:
+        logger.error(f"Command timed out: {' '.join(command)} | Timeout: {timeout}s")
+        raise
     except subprocess.CalledProcessError as e:
         logger.error(f"Command failed: {' '.join(command)} | Exit Code: {e.returncode} | Error: {e.stderr.strip()}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during command execution: {' '.join(command)} | Error: {str(e)}")
         raise
 
 def auto_update():
@@ -100,7 +111,7 @@ def auto_update():
     updates_performed = []
     for command in commands:
         try:
-            result = run_command(command, sudo=True)
+            result = run_command(command)
             if result:
                 updates_performed.append(' '.join(command))
         except Exception as e:
@@ -114,13 +125,57 @@ def auto_update():
     else:
         logger.info("No updates were performed.")
 
+def check_pihole_installation():
+    """Check if Pi-hole is installed by verifying the executable's existence."""
+    possible_paths = ['/usr/local/bin/pihole', '/usr/bin/pihole']
+    for path in possible_paths:
+        if os.path.exists(path) and os.access(path, os.X_OK):
+            logger.info(f"Pi-hole found at {path}")
+            return True
+    logger.info("Pi-hole is not installed.")
+    return False
+
+def update_pihole():
+    """Update Pi-hole to the latest version if installed."""
+    possible_paths = ['/usr/local/bin/pihole', '/usr/bin/pihole']
+    pihole_path = None
+
+    for path in possible_paths:
+        if os.path.exists(path) and os.access(path, os.X_OK):
+            pihole_path = path
+            break
+
+    if pihole_path:
+        try:
+            # Run the Pi-hole update command and log output to the update log
+            logger.info(f"Running Pi-hole update using {pihole_path}")
+            result = run_command([pihole_path, '-up'], timeout=300)
+            
+            # Log the result to the logger
+            logger.info(f"Pi-hole update completed successfully:\n{result}")
+            send_email(
+                subject=f"Pi-hole Update Completed on {host_name}",
+                body=f"Pi-hole was updated successfully on {host_name}.\n\nOutput:\n{result}"
+            )
+        except subprocess.TimeoutExpired as e:
+            logger.error(f"Pi-hole update timed out: {str(e)}")
+            send_email(
+                subject=f"Pi-hole Update Timed Out on {host_name}",
+                body=f"The Pi-hole update process on {host_name} timed out after 300 seconds. Please check manually."
+            )
+        except Exception as e:
+            logger.error(f"Failed to update Pi-hole: {str(e)}")
+            send_email(
+                subject=f"Pi-hole Update Failed on {host_name}",
+                body=f"An error occurred while updating Pi-hole on {host_name}.\n\nError: {str(e)}"
+            )
+    else:
+        logger.info("Pi-hole is not installed. No update performed.")
+
 def check_distribution_upgrade():
     """Check if a distribution upgrade is available and send a notification."""
     try:
-        # Run dist-upgrade in simulation mode to check for available upgrades
-        dist_upgrade_output = run_command(['apt-get', '-s', 'dist-upgrade'], sudo=True)
-        
-        # Look for specific phrases that indicate an upgrade is available
+        dist_upgrade_output = run_command(['apt-get', '-s', 'dist-upgrade'])
         if "The following packages will be upgraded:" in dist_upgrade_output:
             send_email(
                 subject=f"Distribution Upgrade Available on {host_name}",
@@ -141,7 +196,7 @@ def auto_restart():
             body=f"A reboot is required on {host_name} after recent updates. Rebooting now."
         )
         try:
-            run_command(['reboot'], sudo=True)
+            run_command(['reboot'])
         except Exception as e:
             logger.critical(f"Failed to reboot: {str(e)}")
             send_email(
@@ -159,7 +214,8 @@ def main():
     """Main function to execute the update and upgrade checks."""
     try:
         auto_update()
-        check_distribution_upgrade()  # Check for and notify about distribution upgrades
+        update_pihole()  # Check for and update Pi-hole if installed
+        check_distribution_upgrade()
         auto_restart()
     except Exception as e:
         logger.critical(f"Unhandled exception: {str(e)}", exc_info=True)
