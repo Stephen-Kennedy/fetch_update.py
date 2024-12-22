@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Author: Stephen J Kennedy
-# Version: 3.6
+# Version: 3.7
 # Auto update script for Debian/Ubuntu with Gmail SMTP relay support.
 
 import os
@@ -114,18 +114,24 @@ def auto_update():
     else:
         logger.info("No updates were performed.")
 
-    # Check for distribution upgrade
+def check_distribution_upgrade():
+    """Check if a distribution upgrade is available and send a notification."""
     try:
+        # Run dist-upgrade in simulation mode to check for available upgrades
         dist_upgrade_output = run_command(['apt-get', '-s', 'dist-upgrade'], sudo=True)
+        
+        # Look for specific phrases that indicate an upgrade is available
         if "The following packages will be upgraded:" in dist_upgrade_output:
             send_email(
                 subject=f"Distribution Upgrade Available on {host_name}",
-                body=f"A distribution upgrade is available on {host_name}. Manual intervention is required.\n\nOutput:\n{dist_upgrade_output}"
+                body=f"A distribution upgrade is available on {host_name}. Manual intervention is required.\n\n"
+                     f"Output:\n{dist_upgrade_output}"
             )
+            logger.info("Distribution upgrade notification sent.")
         else:
             logger.info("No distribution upgrades available.")
     except Exception as e:
-        logger.error(f"Failed to check distribution upgrade: {str(e)}")
+        logger.error(f"Failed to check for distribution upgrade: {str(e)}")
 
 def auto_restart():
     """Check if a reboot is required and perform it."""
@@ -150,9 +156,10 @@ def auto_restart():
         )
 
 def main():
-    """Main function to execute the update process."""
+    """Main function to execute the update and upgrade checks."""
     try:
         auto_update()
+        check_distribution_upgrade()  # Check for and notify about distribution upgrades
         auto_restart()
     except Exception as e:
         logger.critical(f"Unhandled exception: {str(e)}", exc_info=True)
