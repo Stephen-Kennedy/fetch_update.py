@@ -1,122 +1,141 @@
 #!/usr/bin/python3
 # Author: Stephen J Kennedy
-# Version: 3.5
-# Auto update script for Debian/Ubuntu with email notifications using local Postfix.
+# Version: 3.6
+# Auto update script for Debian/Ubuntu with Gmail SMTP relay support.
 
-import subprocess
 import os
+import subprocess
 import logging
 from logging.handlers import RotatingFileHandler
 import smtplib
 from email.mime.text import MIMEText
 
-# Ensure pip is installed
-try:
-    subprocess.run(['pip', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-except (FileNotFoundError, subprocess.CalledProcessError):
-    print("pip not found, attempting to install pip...")
-    subprocess.run(['sudo', 'apt-get', 'update'], check=True)
-    subprocess.run(['sudo', 'apt-get', 'install', '-y', 'python3-pip'], check=True)
-
-# Check for dotenv and install if missing
-try:
-    from dotenv import load_dotenv
-except ModuleNotFoundError:
-    subprocess.run(['pip', 'install', 'python-dotenv'], check=True)
-    from dotenv import load_dotenv
-
-# Load environment variables from .env file
-ENV_FILE = '/etc/postfix/env_variables.env'
-if not os.path.exists(ENV_FILE):
-    raise FileNotFoundError(f"Environment file {ENV_FILE} not found. Please create it with the required variables.")
-load_dotenv(ENV_FILE)
-
-# Configure Logging
+# Configuration
 LOG_FILE = "/var/log/pyupdate.log"
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5*1024*1024, backupCount=3)
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+ENV_FILE = "/etc/postfix/env_variables.env"
+REQUIRED_ENV_VARS = ['FROM_EMAIL', 'TO_EMAIL', 'SMTP_SERVER', 'EMAIL_PASSWORD']
 
-# Email Configuration from environment variables
-FROM_EMAIL = os.getenv('FROM_EMAIL', 'default@domain.com')
-TO_EMAIL = os.getenv('TO_EMAIL', 'default@domain.com')
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'localhost')
+# Configure logging
+logger = logging.getLogger("update_script")
+logger.setLevel(logging.DEBUG)  # Use DEBUG for testing, INFO for production
+handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Hostname
 host_name = os.uname()[1]
 
+def load_env_variables():
+    """Load environment variables from ENV_FILE."""
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE) as env_file:
+            return dict(line.strip().split("=", 1) for line in env_file if "=" in line)
+    else:
+        logger.critical(f"Environment file {ENV_FILE} not found.")
+        raise FileNotFoundError(f"Environment file {ENV_FILE} not found.")
+
+def validate_env_variables(env_vars):
+    """Ensure required environment variables are present."""
+    for var in REQUIRED_ENV_VARS:
+        if var not in env_vars or not env_vars[var]:
+            logger.critical(f"Environment variable {var} is missing or empty.")
+            raise EnvironmentError(f"Missing required environment variable: {var}")
+
 def send_email(subject, body):
-    """Send email notification using local Postfix or specified SMTP server."""
+    """Send email notification using Gmail SMTP relay."""
     try:
+        env_vars = load_env_variables()
+        validate_env_variables(env_vars)
+
+        FROM_EMAIL = env_vars['FROM_EMAIL']
+        TO_EMAIL = env_vars['TO_EMAIL']
+        SMTP_SERVER = env_vars['SMTP_SERVER']
+        EMAIL_PASSWORD = env_vars['EMAIL_PASSWORD']
+
+        # Compose and send email
         msg = MIMEText(body)
         msg['Subject'] = subject
         msg['From'] = FROM_EMAIL
         msg['To'] = TO_EMAIL
 
-        with smtplib.SMTP(SMTP_SERVER) as server:
+        with smtplib.SMTP(SMTP_SERVER, 587) as server:
+            server.ehlo()  # Identify with the SMTP server
+            server.starttls()  # Enable TLS
+            server.ehlo()  # Re-identify after TLS
+            server.login(FROM_EMAIL, EMAIL_PASSWORD)  # Authenticate
             server.sendmail(FROM_EMAIL, [TO_EMAIL], msg.as_string())
+
         logger.info(f"Email notification sent: {subject}")
     except smtplib.SMTPException as e:
         logger.error(f"Failed to send email: {str(e)}")
+    except Exception as e:
+        logger.error(f"General error while sending email: {str(e)}")
 
-def run_command(command):
+def run_command(command, sudo=False):
     """Run shell command securely and log output."""
     try:
-        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        logger.info(f"Command '{' '.join(command)}' output: {result.stdout.strip()}")
-        if result.stderr:
-            logger.warning(f"Command '{' '.join(command)}' error: {result.stderr.strip()}")
+        if sudo:
+            command.insert(0, 'sudo')
+        env = os.environ.copy()
+        env["DEBIAN_FRONTEND"] = "noninteractive"
+        result = subprocess.run(
+            command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+        )
+        logger.info(f"Command executed successfully: {' '.join(command)}")
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        logger.error(f"Command '{' '.join(command)}' failed with return code {e.returncode}. Error: {e.stderr.strip()}")
-        return None
+        logger.error(f"Command failed: {' '.join(command)} | Exit Code: {e.returncode} | Error: {e.stderr.strip()}")
+        raise
 
 def auto_update():
-    """Performs system updates and cleans up."""
+    """Perform system updates and clean-up."""
     commands = [
-        ['sudo', 'apt-get', '-y', 'update'],
-        ['sudo', 'apt-get', '-y', 'upgrade'],
-        ['sudo', 'apt-get', '-y', 'autoremove'],
-        ['sudo', 'apt-get', '-y', 'autoclean']
+        ['apt-get', '-y', 'update'],
+        ['apt-get', '-y', 'upgrade'],
+        ['apt-get', '-y', 'autoremove'],
+        ['apt-get', '-y', 'autoclean']
     ]
 
     updates_performed = []
     for command in commands:
-        result = run_command(command)
-        if result is not None:
-            updates_performed.append(' '.join(command))
-        else:
-            logger.error(f"Failed to run {' '.join(command)} on {host_name}")
+        try:
+            result = run_command(command, sudo=True)
+            if result:
+                updates_performed.append(' '.join(command))
+        except Exception as e:
+            logger.error(f"Failed to run {' '.join(command)}: {str(e)}")
 
     if updates_performed:
         send_email(
             subject=f"Update Notification from {host_name}",
             body=f"The following updates were performed on {host_name}:\n\n" + '\n'.join(updates_performed)
         )
-
-    # Check if a distribution upgrade is available
-    dist_upgrade_output = run_command(['sudo', 'apt-get', '-s', 'dist-upgrade'])
-    if dist_upgrade_output and "The following packages will be upgraded:" in dist_upgrade_output:
-        send_email(
-            subject=f"Distribution Upgrade Available on {host_name}",
-            body=f"A distribution upgrade is available on {host_name}. Manual intervention is required.\n\nOutput:\n{dist_upgrade_output}"
-        )
     else:
-        logger.info("No distribution upgrades available.")
+        logger.info("No updates were performed.")
+
+    # Check for distribution upgrade
+    try:
+        dist_upgrade_output = run_command(['apt-get', '-s', 'dist-upgrade'], sudo=True)
+        if "The following packages will be upgraded:" in dist_upgrade_output:
+            send_email(
+                subject=f"Distribution Upgrade Available on {host_name}",
+                body=f"A distribution upgrade is available on {host_name}. Manual intervention is required.\n\nOutput:\n{dist_upgrade_output}"
+            )
+        else:
+            logger.info("No distribution upgrades available.")
+    except Exception as e:
+        logger.error(f"Failed to check distribution upgrade: {str(e)}")
 
 def auto_restart():
-    """Checks if a reboot is required and performs it."""
+    """Check if a reboot is required and perform it."""
     if os.path.isfile('/var/run/reboot-required'):
         send_email(
             subject=f"Reboot Required for {host_name}",
             body=f"A reboot is required on {host_name} after recent updates. Rebooting now."
         )
-        logger.warning(f"**** REBOOT REQUIRED for host: {host_name}. Rebooting now ****")
         try:
-            run_command(['sudo', 'reboot'])
+            run_command(['reboot'], sudo=True)
         except Exception as e:
             logger.critical(f"Failed to reboot: {str(e)}")
             send_email(
@@ -130,19 +149,9 @@ def auto_restart():
             body=f"The update process is complete on {host_name}. No reboot was required."
         )
 
-def test_smtp_connection():
-    """Test SMTP server connection."""
+def main():
+    """Main function to execute the update process."""
     try:
-        with smtplib.SMTP(SMTP_SERVER) as server:
-            server.noop()
-        logger.info(f"SMTP server {SMTP_SERVER} is reachable.")
-    except Exception as e:
-        logger.error(f"SMTP server {SMTP_SERVER} is unreachable: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    try:
-        test_smtp_connection()
         auto_update()
         auto_restart()
     except Exception as e:
@@ -151,3 +160,6 @@ if __name__ == "__main__":
             subject=f"Error in Update Script on {host_name}",
             body=f"An error occurred during the update process on {host_name}. Check the logs for details.\n\nError: {str(e)}"
         )
+
+if __name__ == "__main__":
+    main()
